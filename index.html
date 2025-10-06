@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Мои желания — Студент</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--accent:#3b82f6;--muted:#6b7280}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); margin:0; padding:24px; color:#111}
+    .container{max-width:900px;margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    h1{font-size:1.6rem;margin:0}
+    p.lead{margin:0;color:var(--muted)}
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(15,23,42,0.06);}
+    .wishes{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px}
+    .wish{padding:12px;border-radius:10px;border:1px solid #eef2ff;background:linear-gradient(180deg,rgba(255,255,255,0.7),transparent)}
+    .wish h3{margin:0 0 8px 0;font-size:1rem}
+    .meta{font-size:0.85rem;color:var(--muted);margin-bottom:8px}
+    .actions{display:flex;gap:8px}
+    button{border:0;padding:8px 10px;border-radius:8px;cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-ghost{background:transparent;border:1px solid #e6eefb}
+    .done{opacity:0.5;text-decoration:line-through}
+    form.add{display:flex;gap:8px;margin-top:12px}
+    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #e6eefb}
+    footer{margin-top:18px;color:var(--muted);font-size:0.9rem}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #eef; font-size:0.75rem;margin-right:6px}
+    @media (max-width:520px){header{flex-direction:column;align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Мои желания — студент</h1>
+        <p class="lead">Небольшой список желаний и целей, которые помогут учёбе и жизни. Можно добавлять, отмечать выполненным и сохранять в локальном хранилище.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <strong>Категории:</strong>
+      <div style="margin-top:8px">
+        <span class="tag">Учёба</span>
+        <span class="tag">Карьерa</span>
+        <span class="tag">Здоровье</span>
+        <span class="tag">Личное развитие</span>
+        <span class="tag">Финансы</span>
+        <span class="tag">Путешествия</span>
+        <span class="tag">Творчество</span>
+      </div>
+
+      <div class="wishes" id="wishes">
+        <!-- Примеры желаний для студента -->
+      </div>
+
+      <form id="addForm" class="add" onsubmit="return false">
+        <input id="newText" type="text" placeholder="Добавить новое желание (например: Сдать экзамен по математике на 5)">
+        <button id="addBtn" class="btn-primary">Добавить</button>
+      </form>
+
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button id="clearBtn" class="btn-ghost">Очистить выполненные</button>
+        <button id="resetBtn" class="btn-ghost">Сбросить к примерам</button>
+        <button id="exportBtn" class="btn-ghost">Экспорт в JSON</button>
+      </div>
+
+      <footer>
+        <small>Сохранение происходит в браузере (localStorage). Страница автономна и работает офлайн.</small>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    // Начальные примеры желаний для студента
+    const defaultWishes = [
+      {id:1, title:'Сдать экзамен по математике на 5', category:'Учёба', done:false},
+      {id:2, title:'Написать и опубликовать портфолио/резюме', category:'Карьера', done:false},
+      {id:3, title:'Выделять 30 минут в день на самообучение', category:'Личное развитие', done:false},
+      {id:4, title:'Начать еженедельные занятия спортом (3× в неделю)', category:'Здоровье', done:false},
+      {id:5, title:'Создать запас на чёрный день (100€)', category:'Финансы', done:false},
+      {id:6, title:'Посетить новое место — мини-путешествие на выходных', category:'Путешествия', done:false},
+      {id:7, title:'Сделать мини-проект на GitHub', category:'Творчество', done:false},
+      {id:8, title:'Установить режим сна: ложиться не позже 23:30', category:'Здоровье', done:false}
+    ];
+
+    const STORAGE_KEY = 'student_wishes_v1';
+
+    function loadWishes(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultWishes.slice();
+      try{const parsed = JSON.parse(raw); if(Array.isArray(parsed)) return parsed;}catch(e){}
+      return defaultWishes.slice();
+    }
+
+    function saveWishes(list){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+
+    let wishes = loadWishes();
+    const container = document.getElementById('wishes');
+
+    function render(){
+      container.innerHTML = '';
+      wishes.forEach(w => {
+        const el = document.createElement('div'); el.className='wish';
+        if(w.done) el.classList.add('done');
+        el.innerHTML = `
+          <h3>${escapeHtml(w.title)}</h3>
+          <div class="meta">Категория: ${escapeHtml(w.category)} — id: ${w.id}</div>
+          <div class="actions">
+            <button class="btn-primary" onclick="toggleDone(${w.id})">${w.done? 'Отметить как невыполненное' : 'Отметить выполненным'}</button>
+            <button class="btn-ghost" onclick="promptEdit(${w.id})">Изменить</button>
+            <button class="btn-ghost" onclick="removeWish(${w.id})">Удалить</button>
+          </div>`;
+        container.appendChild(el);
+      })
+    }
+
+    function escapeHtml(text){
+      return String(text).replace(/[&<>\"]+/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]||s));
+    }
+
+    function toggleDone(id){
+      wishes = wishes.map(w=> w.id===id ? {...w, done:!w.done} : w);
+      saveWishes(wishes); render();
+    }
+
+    function promptEdit(id){
+      const w = wishes.find(x=>x.id===id); if(!w) return;
+      const newTitle = prompt('Изменить желание:', w.title);
+      if(newTitle===null) return;
+      w.title = newTitle.trim() || w.title;
+      saveWishes(wishes); render();
+    }
+
+    function removeWish(id){
+      if(!confirm('Удалить это желание?')) return;
+      wishes = wishes.filter(w=>w.id!==id);
+      saveWishes(wishes); render();
+    }
+
+    document.getElementById('addBtn').addEventListener('click', ()=>{
+      const text = document.getElementById('newText').value.trim();
+      if(!text) return alert('Введите текст желания.');
+      const newWish = {id:Date.now(), title:text, category:'Общее', done:false};
+      wishes.unshift(newWish);
+      document.getElementById('newText').value='';
+      saveWishes(wishes); render();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', ()=>{
+      wishes = wishes.filter(w=>!w.done);
+      saveWishes(wishes); render();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      if(!confirm('Сбросить список к исходным примерам?')) return;
+      wishes = defaultWishes.slice(); saveWishes(wishes); render();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      const data = JSON.stringify(wishes, null, 2);
+      const blob = new Blob([data], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'wishes.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Рендер при загрузке
+    render();
+  </script>
+</body>
+</html>
